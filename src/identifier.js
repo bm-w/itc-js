@@ -45,11 +45,36 @@ function joinITCIdentifierTrees(treeA, treeB) {
 	};
 };
 
+function forkITCIdentifierTree(tree) {
+	if (tree === false) {
+		return [false, false];
+	} else if (tree === true) {
+		return [[true, false], [false, true]];
+	} else if (tree[0] === false) {
+		var trees = forkITCIdentifierTree.call(this, tree[1]);
+		return [[false, trees[0]], [false, trees[1]]];
+	} else if (tree[1] === false) {
+		var trees = forkITCIdentifierTree.call(this, tree[0]);
+		return [[trees[0], false], [trees[1], false]];
+	} else {
+		return [[tree[0], false], [false, tree[1]]];
+	};
+};
+
 
 ITCIdentifier.join = function joinITCIdentifiers(idA, idB) {
 	var treeA = idA ? idA.tree : false,
 	    treeB = idB ? idB.tree : false;
 	return new this(joinITCIdentifierTrees.call(this, treeA, treeB));
+};
+
+ITCIdentifier.fork = function forkITCIdentifier(id) {
+	var trees = forkITCIdentifierTree.call(this, id ? id.tree : 0);
+	return trees.map(function(t) { return new this(t); }, this);
+};
+
+ITCIdentifier.prototype.fork = function itcIdentifierFork() {
+	return this.constructor.fork(this);
 };
 
 
