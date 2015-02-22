@@ -1,0 +1,15 @@
+{
+	"name": "itc",
+	"repository": "itc",
+	"description": "Interval Tree Clock",
+	"devDependencies": {
+		"coffee-script": "*",
+		"mocha": "*",
+		"rewire": "*",
+		"chai": "*",
+		"sinon": "*"
+	},
+	"scripts": {
+		"test": "make test"
+	}
+}
