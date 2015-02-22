@@ -12,7 +12,8 @@ COFFEE_BIN := $(DIR)/node_modules/coffee-script/bin/coffee
 
 TESTS :=\
 	$(DIR)/tests/identifier.js\
-	$(DIR)/tests/event.js
+	$(DIR)/tests/event.js\
+	$(DIR)/tests/index.js
 test: $(MOCHA_BIN) $(TESTS)
 	$(NODE_BIN) $(MOCHA_BIN) $(TESTS)
 
@@ -22,9 +23,12 @@ clean:
 
 
 # Files
-	
+
+$(DIR)/src/index.js: $(DIR)/src/identifier.js $(DIR)/src/event.js
+
 $(DIR)/tests/identifier.js: $(DIR)/src/identifier.js
 $(DIR)/tests/event.js: $(DIR)/src/event.js
+$(DIR)/tests/index.js: $(DIR)/src/index.js
 $(DIR)/tests/%.js: $(DIR)/specs/%.coffee.md | $(DIR)/tests
 	$(NODE_BIN) $(COFFEE_BIN) -bclp $< > $@
 
