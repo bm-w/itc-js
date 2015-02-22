@@ -10,6 +10,49 @@ function ITCIdentifier(tree) {
 };
 
 
+function normITCIdentifierTree(tree, recursively) {
+	if (!tree.length) {
+		return tree;
+	} else if (tree[0] === false && tree[1] === false) {
+		return false;
+	} else if (tree[0] === true && tree[1] === true) {
+		return true;
+	} else if (recursively === false
+	|| (tree[0] === true && tree[1] === false)
+	|| (tree[0] === false && tree[1] === true)) {
+		return tree;
+	} else { return normITCIdentifierTree.call(this, [
+		normITCIdentifierTree.call(this, tree[0]),
+		normITCIdentifierTree.call(this, tree[1]),
+	], false); };
+};
+
+function joinITCIdentifierTrees(treeA, treeB) {
+	if (!treeA) {
+		return /* TODO: Copy? */treeB;
+	} else if (!treeB) {
+		return /* TODO: Copy? */treeA;
+	} else {
+		var lA, rA, lB, rB;
+		if (treeA.length) { lA = treeA[0], rA = treeA[1]; }
+		else { lA = rA = treeA; };
+		if (treeB.length) { lB = treeB[0], rB = treeB[1]; }
+		else { lB = rB = treeB; };
+		return normITCIdentifierTree.call(this, [
+			joinITCIdentifierTrees.call(this, lA, lB),
+			joinITCIdentifierTrees.call(this, rA, rB)
+		]);
+	};
+};
+
+
+ITCIdentifier.join = function joinITCIdentifiers(idA, idB) {
+	var treeA = idA ? idA.tree : false,
+	    treeB = idB ? idB.tree : false;
+	return new this(joinITCIdentifierTrees.call(this, treeA, treeB));
+};
+
+
 if (typeof module == 'object') {
 	module.exports = ITCIdentifier;
 } else {
