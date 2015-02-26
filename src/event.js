@@ -10,6 +10,61 @@ function ITCEvent(tree) {
 };
 
 
+function decodeITCEventNumber(bits, offset, width) {
+	if (bits[offset]) {
+		var result = decodeITCEventNumber.call(this, bits, offset + 1, width + 1);
+		return [result[0] + Math.pow(2, width), result[1]];
+	} else {
+		var value = 0;
+		for (var i = 0; i < width; ++i) {
+			var b = bits[offset + 1 + i];
+			value = value + (b ? Math.pow(2, width - 1 - i) : 0);
+		};
+		return [value, offset + 1 + width];
+	};
+};
+
+function decodeITCEventTree(bits, offset) {
+	if (offset + 4 > bits.length) {
+		return [0, offset + 4];
+	} else if (bits[offset]) {
+		return decodeITCEventNumber.call(this, bits, offset + 1, 2);
+	} else if (bits[offset + 1]) {
+		if (bits[offset + 2]) {
+			if (bits[offset + 3]) {
+				var baseResult = decodeITCEventTree.call(this, bits, offset + 4),
+				    leftResult = decodeITCEventTree.call(this, bits, baseResult[1]),
+				    rightResult = decodeITCEventTree.call(this, bits, leftResult[1]);
+
+				return [[baseResult[0], leftResult[0], rightResult[0]], rightResult[1]];
+			} else if (bits[offset + 4]) {
+				var baseResult = decodeITCEventTree.call(this, bits, offset + 5);
+				    leftResult = decodeITCEventTree.call(this, bits, baseResult[1]);
+
+				return [[baseResult[0], leftResult[0], 0], leftResult[1]];
+			} else {
+				var baseResult = decodeITCEventTree.call(this, bits, offset + 5);
+				    rightResult = decodeITCEventTree.call(this, bits, baseResult[1]);
+
+				return [[baseResult[0], 0, rightResult[0]], rightResult[1]];
+			};
+		} else {
+			var leftResult = decodeITCEventTree.call(this, bits, offset + 3),
+			    rightResult = decodeITCEventTree.call(this, bits, leftResult[1]);
+
+			return [[0, leftResult[0], rightResult[0]], rightResult[1]];
+		};
+	} else if (bits[offset + 2]) {
+		var leftResult = decodeITCEventTree.call(this, bits, offset + 3);
+
+		return [[0, leftResult[0], 0], leftResult[1]];
+	} else {
+		var rightResult = decodeITCEventTree.call(this, bits, offset + 3);
+
+		return [[0, 0, rightResult[0]], rightResult[1]];
+	};
+};
+
 function liftITCEventTree(tree, delta) {
 	if (typeof tree == 'number') { return tree + delta; }
 	else { return [tree[0] + delta, tree[1], tree[2]]; };
@@ -162,6 +217,20 @@ function eventITCEventTree(evTree, idTree) {
 };
 
 
+function setDecodeFn(util) {
+	this.decode = function decodeITCEvent(arg0, arg1, arg2) {
+		var buffer = Buffer.isBuffer(arg0) ? arg0 : new Buffer(arg0, arg1 ? arg1 : 'base64'),
+		    bits = util.bufferToBits(buffer),
+		    result = decodeITCEventTree.call(this, bits, arg2 || arg1 || 0),
+		    tree = normITCEventTree.call(this, result[0]);
+		return [new this(tree), result[1]];
+	};
+};
+
+ITCEvent.parse = function parseITCEvent() {
+	return this.decode.apply(this, arguments)[0];
+};
+
 ITCEvent.join = function joinITCEvents(evA, evB) {
 	var treeA = evA ? evA.tree : 0,
 	    treeB = evB ? evB.tree : 0;
@@ -179,6 +248,7 @@ ITCEvent.prototype.event = function itcEventEvent(id) {
 
 
 if (typeof module == 'object') {
+	setDecodeFn.call(ITCEvent, require('./util'));
 	module.exports = ITCEvent;
 } else {
 	throw new Error("Browser version not implemented.");
