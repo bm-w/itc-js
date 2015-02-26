@@ -37,13 +37,34 @@
     		(expect @ITC).to.have.a.property 'Event'
     			.that.is.a 'function'
 
-    	it "should have `join`, `event`, and `fork` class methods", ->
+    	it "should have `decode`, `join`, `event`, and `fork` class methods", ->
+    		(expect @ITC).to.have.a.property 'decode'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'parse'
+    			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'join'
     			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'event'
     			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'fork'
     			.that.is.a 'function'
+
+    	describe "its `decode` class method", ->
+    		it "should call the `decode` class methods of `Identifier` and `Event`", ->
+    			[idDecodeFn, idDecodeSpy] = [@ITC.Identifier.decode, @ITC.Identifier.decode = sinon.spy => [new @ITC.Identifier, 3]]
+    			[evDecodeFn, evDecodeSpy] = [@ITC.Event.decode, @ITC.Event.decode = sinon.spy => [new @ITC.Event, 7]]
+
+    			[itc] = @ITC.decode ""
+    			(expect idDecodeSpy.calledOnce).to.equal true
+    			(expect idDecodeSpy.args[0][0]).to.equal ""
+    			(expect idDecodeSpy.args[0][2]).to.equal 0
+    			(expect evDecodeSpy.calledOnce).to.equal true
+    			(expect evDecodeSpy.args[0][0]).to.equal ""
+    			(expect evDecodeSpy.args[0][2]).to.equal 3
+    			(expect itc).to.equalITC _identifier: false, _event: 0
+
+    			@ITC.Identifier.decode = idDecodeFn
+    			@ITC.Event.decode = evDecodeFn
 
     	describe "its `join` class method", ->
     		it "should call the `join` class methods of `Identifier` and `Event`", ->
