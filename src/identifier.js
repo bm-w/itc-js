@@ -10,6 +10,31 @@ function ITCIdentifier(tree) {
 };
 
 
+function decodeITCIdentifierTree(bits, offset) {
+	if (offset + 3 > bits.length) {
+		return [false, offset + 3];
+	} else if (bits[offset]) {
+		var leftResult = decodeITCIdentifierTree.call(this, bits, offset + 2),
+		    leftOffset = leftResult[1];
+
+		if (bits[offset + 1]) {
+			var rightResult = decodeITCIdentifierTree.call(this, bits, leftOffset),
+			    rightOffset = rightResult[1];
+
+			return [[leftResult[0], rightResult[0]], rightOffset]; 
+		} else {
+			return [[leftResult[0], false], leftOffset];
+		};
+	} else if (bits[offset + 1]) {
+		var rightResult = decodeITCIdentifierTree.call(this, bits, offset + 2),
+		    rightOffset = rightResult[1];
+
+		return [[false, rightResult[0]], rightOffset];
+	} else {
+		return [bits[offset + 2] ? true : false, offset + 3];
+	};
+};
+
 function normITCIdentifierTree(tree, recursively) {
 	if (!tree.length) {
 		return tree;
@@ -62,6 +87,20 @@ function forkITCIdentifierTree(tree) {
 };
 
 
+function setDecodeFn(util) {
+	this.decode = function decodeITCIdentifier(arg0, arg1, arg2) {
+		var buffer = Buffer.isBuffer(arg0) ? arg0 : new Buffer(arg0, arg1 ? arg1 : 'base64'),
+		    bits = util.bufferToBits(buffer),
+		    result = decodeITCIdentifierTree.call(this, bits, arg2 || arg1 || 0),
+		    tree = normITCIdentifierTree.call(this, result[0]);
+		return [new this(tree), result[1]];
+	};
+};
+
+ITCIdentifier.parse = function parseITCIdentifier() {
+	return this.decode.apply(this, arguments)[0];
+};
+
 ITCIdentifier.join = function joinITCIdentifiers(idA, idB) {
 	var treeA = idA ? idA.tree : false,
 	    treeB = idB ? idB.tree : false;
@@ -79,6 +118,7 @@ ITCIdentifier.prototype.fork = function itcIdentifierFork() {
 
 
 if (typeof module == 'object') {
+	setDecodeFn.call(ITCIdentifier, require('./util'));
 	module.exports = ITCIdentifier;
 } else {
 	throw new Error("Browser version not implemented.");

@@ -26,11 +26,67 @@
     		(expect ev).to.have.a.property 'tree', 0
     		(expect ev).to.equalEvent 0
 
-    	it "should have `join` and `event` class methods", ->
+    	it "should have `decode`, `join`, and `event` class methods", ->
+    		(expect @Event).to.have.a.property 'decode'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'parse'
+    			.that.is.a 'function'
     		(expect @Event).to.have.a.property 'join'
     			.that.is.a 'function'
     		(expect @Event).to.have.a.property 'event'
     			.that.is.a 'function'
+
+    	describe "its `decode` class method", ->
+    		it "should decode <1:1,enc(n,2)> into an EVn instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x90] # NB. 1001 (0000)
+    			(expect ev).to.equalEvent 1
+    			(expect offset).to.equal 4
+
+    			[ev, offset] = @Event.decode new Buffer [0xd4] # NB. 1101 01(00)
+    			(expect ev).to.equalEvent 9
+    			(expect offset).to.equal 6
+
+    			[ev, offset] = @Event.decode new Buffer [0xe5] # NB. 1110 0101
+    			(expect ev).to.equalEvent 17
+    			(expect offset).to.equal 8
+
+    		it "should decode <0:1,3:2,1:1,enc(n),enc(eL),enc(eR)> into an EV[n,eL,eR] instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x78, 0x89] # NB. 0111 1000 1000 1001
+    			(expect ev).to.equalEvent [0, 0, 1]
+    			(expect offset).to.equal 16
+
+    			[ev, offset] = @Event.decode new Buffer [0x78, 0x98] # NB. 0111 1000 1001 1000
+    			(expect ev).to.equalEvent [0, 1, 0]
+    			(expect offset).to.equal 16
+
+    		it "should decode <0:1,3:2,0:1,0:1,enc(n),enc(eR)> into an EV[n,0,eR] instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x64, 0x48] # NB. 0110 0100 0100 1(000)
+    			(expect ev).to.equalEvent [0, 0, 1]
+    			(expect offset).to.equal 13
+
+    		it "should decode <0:1,3:2,0:1,1:1,enc(n),enc(eL)> into an EV[n,eL,0] instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x6c, 0x48] # NB. 0110 1100 0100 1(000)
+    			(expect ev).to.equalEvent [0, 1, 0]
+    			(expect offset).to.equal 13
+
+    		it "should decode <0:1,2:2,enc(eL),enc(eR)> into an EV[0,eL,eR] instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x51, 0x20] # NB. 0101 0001 001(0 0000)
+    			(expect ev).to.equalEvent [0, 0, 1]
+    			(expect offset).to.equal 11
+
+    			[ev, offset] = @Event.decode new Buffer [0x53, 0x00] # NB. 0101 0011 000(0 0000)
+    			(expect ev).to.equalEvent [0, 1, 0]
+    			(expect offset).to.equal 11
+
+    		it "should decode <0:1,1:2,enc(eL)> into an EV[0,eL,0] instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x32, 0x00] # NB. 0011 001(0 0000 0000)
+    			(expect ev).to.equalEvent [0, 1, 0]
+    			(expect offset).to.equal 7
+
+    		it "should decode <0:1,0:2,enc(eR)> into an EV[0,0,eR] instance", ->
+    			[ev, offset] = @Event.decode new Buffer [0x12, 0x00] # NB. 0001 001(0 0000 0000)
+    			(expect ev).to.equalEvent [0, 0, 1]
+    			(expect offset).to.equal 7
 
     	describe "its `join` class method", ->
     		it "should join EV0 and EV1 instances into an EV1 instance", ->

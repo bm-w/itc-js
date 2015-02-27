@@ -7,7 +7,7 @@
     sinon = require 'sinon'
 
     equalIdentifier = (idB) ->
-    	[treeA, treeB] = [@_obj.tree ? @_obj, idB.tree ? idB]
+    	[treeA, treeB] = [@_obj.tree, idB.tree ? idB]
     	(expect treeA).to.deep.equal treeB
     chai.Assertion.addChainableMethod 'equalIdentifier', equalIdentifier
     chai.Assertion.addChainableMethod 'equalsIdentifier', equalIdentifier
@@ -26,11 +26,43 @@
     		(expect id).to.have.a.property 'tree', false
     		(expect id).to.equalIdentifier false
 
-    	it "should have `join` and `fork` class methods", ->
+    	it "should have `decode`, `join`, and `fork` class methods", ->
+    		(expect @Identifier).to.have.a.property 'decode'
+    			.that.is.a 'function'
+    		(expect @Identifier).to.have.a.property 'parse'
+    			.that.is.a 'function'
     		(expect @Identifier).to.have.a.property 'join'
     			.that.is.a 'function'
     		(expect @Identifier).to.have.a.property 'fork'
     			.that.is.a 'function'
+
+    	describe "its `decode` class method", ->
+    		it "should decode <0:2,0-1:1> into ID0 and ID1 instances", ->
+    			[id, offset] = @Identifier.decode new Buffer [0x00] # NB. 000(00000)
+    			(expect id).to.equalIdentifier false
+    			(expect offset).to.equal 3
+
+    			[id, offset] = @Identifier.decode new Buffer [0x20] # NB. 001(00000)
+    			(expect id).to.equalIdentifier true
+    			(expect offset).to.equal 3
+
+    		it "should decode <1-2:2,0:2,1:1> into ID[0,1] and ID[1,0] instances", ->
+    			[id, offset] = @Identifier.decode new Buffer [0x48] # NB. 01001(000)
+    			(expect id).to.equalIdentifier [false, true]
+    			(expect offset).to.equal 5
+
+    			[id, offset] = @Identifier.decode new Buffer [0x88] # NB. 11001(000)
+    			(expect id).to.equalIdentifier [true, false]
+    			(expect offset).to.equal 5
+
+    		it "should decode <3:2,0:2,0-1:1,0:2,0-1:1> into normalized ID0 and ID1 instances", ->
+    			[id, offset] = @Identifier.decode new Buffer [0xc0] # NB. 11000000
+    			(expect id).to.equalIdentifier false
+    			(expect offset).to.equal 8
+
+    			[id, offset] = @Identifier.decode new Buffer [0xc9] # NB. 11001001
+    			(expect id).to.equalIdentifier true
+    			(expect offset).to.equal 8
 
     	describe "its `join` class method", ->
     		it "should join ID0 and ID1 instances into an ID1 instance", ->

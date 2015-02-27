@@ -11,6 +11,30 @@ function ITC(identifier, event) {
 };
 
 
+ITC.decode = function decodeITC(arg0, arg1, arg2) {
+	var IdCtor = this.Identifier,
+	    EvCtor = this.Event;
+
+	if (arguments.length == 2) {
+		if (typeof arg1 == 'number') {
+			arg2 = arg1, arg1 = undefined;
+		} else {
+			arg2 = 0;
+		};
+	} else if (arguments.length == 1) {
+		arg1 = undefined, arg2 = 0;
+	};
+
+	var idResult = IdCtor.decode.apply(IdCtor, [arg0, arg1, arg2]),
+	    evResult = EvCtor.decode.apply(EvCtor, [arg0, arg1, idResult[1]]);
+
+	return [new this(idResult[0], evResult[0]), evResult[1]];
+};
+
+ITC.parse = function parseITC() {
+	return this.decode.apply(this, arguments)[0];
+};
+
 ITC.join = function joinITCs(itcA, itcB) {
 	itcA = itcA != null ? itcA : new this();
 	itcB = itcB != null ? itcB : new this();
