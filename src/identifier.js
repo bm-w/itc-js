@@ -35,6 +35,21 @@ function decodeITCIdentifierTree(bits, offset) {
 	};
 };
 
+function encodeITCIdentifierTreeBits(tree) {
+	if (typeof tree == 'boolean') {
+		return [false, false, tree];
+	} else if (tree[0] == false) {
+		return [false, true].concat(encodeITCIdentifierTreeBits.call(this, tree[1]));
+	} else if (tree[1] == false) {
+		return [true, false].concat(encodeITCIdentifierTreeBits.call(this, tree[0]));
+	} else {
+		var tree0Bits = encodeITCIdentifierTreeBits.call(this, tree[0]),
+		    tree1Bits = encodeITCIdentifierTreeBits.call(this, tree[1]);
+
+		return [true, true].concat(tree0Bits).concat(tree1Bits);
+	};
+};
+
 function normITCIdentifierTree(tree, recursively) {
 	if (!tree.length) {
 		return tree;
@@ -101,6 +116,24 @@ ITCIdentifier.parse = function parseITCIdentifier() {
 	return this.decode.apply(this, arguments)[0];
 };
 
+function setEncodeFn(util) {
+	this.encode = function toITCIdentifierBits(id, enc) {
+		var tree = id ? id.tree : false,
+		    bits = encodeITCIdentifierTreeBits.call(this, tree),
+		    buffer = util.bitsToBuffer(bits);
+		return [enc != undefined ? buffer.toString(enc) : buffer, bits.length];
+	};
+};
+
+ITCIdentifier.toBuffer = function toITCIdentifierBuffer(id) {
+	return this.encode.call(this, id)[0];
+};
+
+ITCIdentifier.toString = function toITCIdentifierBuffer(enc) {
+	return this.encode.call(this, id, enc || 'base64')[0];
+};
+
+
 ITCIdentifier.join = function joinITCIdentifiers(idA, idB) {
 	var treeA = idA ? idA.tree : false,
 	    treeB = idB ? idB.tree : false;
@@ -116,9 +149,24 @@ ITCIdentifier.prototype.fork = function itcIdentifierFork() {
 	return this.constructor.fork(this);
 };
 
+ITCIdentifier.prototype.encode = function itcIdentifierEncode(enc) {
+	return this.constructor.encode(this, enc);
+};
+
+ITCIdentifier.prototype.toBuffer = function itcIdentifierToBuffer() {
+	return this.constructor.toBuffer(this);
+};
+
+ITCIdentifier.prototype.toString = function itcIdentifierToString(enc) {
+	return this.constructor.toString(enc);
+};
+
 
 if (typeof module == 'object') {
-	setDecodeFn.call(ITCIdentifier, require('./util'));
+	var util = require('./util');
+
+	setDecodeFn.call(ITCIdentifier, util);
+	setEncodeFn.call(ITCIdentifier, util);
 	module.exports = ITCIdentifier;
 } else {
 	throw new Error("Browser version not implemented.");

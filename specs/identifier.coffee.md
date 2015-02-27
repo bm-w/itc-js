@@ -12,6 +12,11 @@
     chai.Assertion.addChainableMethod 'equalIdentifier', equalIdentifier
     chai.Assertion.addChainableMethod 'equalsIdentifier', equalIdentifier
 
+    equalBuffer = (bufB) ->
+    	(expect @_obj.toString 'binary').to.equal bufB.toString 'binary'
+    chai.Assertion.addChainableMethod 'equalBuffer', equalBuffer
+    chai.Assertion.addChainableMethod 'equalsBuffer', equalBuffer
+
 …
 
     describe "the `ITCIdentifier` class", ->
@@ -30,6 +35,12 @@
     		(expect @Identifier).to.have.a.property 'decode'
     			.that.is.a 'function'
     		(expect @Identifier).to.have.a.property 'parse'
+    			.that.is.a 'function'
+    		(expect @Identifier).to.have.a.property 'encode'
+    			.that.is.a 'function'
+    		(expect @Identifier).to.have.a.property 'toBuffer'
+    			.that.is.a 'function'
+    		(expect @Identifier).to.have.a.property 'toString'
     			.that.is.a 'function'
     		(expect @Identifier).to.have.a.property 'join'
     			.that.is.a 'function'
@@ -63,6 +74,35 @@
     			[id, offset] = @Identifier.decode new Buffer [0xc9] # NB. 11001001
     			(expect id).to.equalIdentifier true
     			(expect offset).to.equal 8
+
+    	describe "its `encode` class method", ->
+    		it "should encode an ID0-1 instance into <0:2,0-1:1>", ->
+    			[b, l] = @Identifier.encode new @Identifier false
+    			(expect b).to.equalBuffer new Buffer [0x00] # NB. 000(0 0000)
+    			(expect l).to.equal 3
+
+    			[b, l] = @Identifier.encode new @Identifier true
+    			(expect b).to.equalBuffer new Buffer [0x20] # NB. 001(0 0000)
+    			(expect l).to.equal 3
+
+    		it "should encode an ID[0,i] instance into <1:2,enc(i)>", ->
+    			[b, l] = @Identifier.encode new @Identifier [false, true]
+    			(expect b).to.equalBuffer new Buffer [0x48] # NB. 0100 1(000)
+    			(expect l).to.equal 5
+
+    		it "should encode an ID[i,0] instance into <2:2,enc(i)>", ->
+    			[b, l] = @Identifier.encode new @Identifier [true, false]
+    			(expect b).to.equalBuffer new Buffer [0x88] # NB. 1000 1(000)
+    			(expect l).to.equal 5
+
+    		it "should encode an ID[iL,iR] instance into <3:2,enc(iL),enc(iR)>", ->
+    			[b, l] = @Identifier.encode new @Identifier [[false, true], [true, false]]
+    			(expect b).to.equalBuffer new Buffer [0xd3, 0x10] # NB. 11,01 001,1 0001 (0000)
+    			(expect l).to.equal 12
+
+    			[b, l] = @Identifier.encode new @Identifier [[true, false], [false, true]]
+    			(expect b).to.equalBuffer new Buffer [0xe2, 0x90] # NB. 11,10 001,0 1001 (0000)
+    			(expect l).to.equal 12
 
     	describe "its `join` class method", ->
     		it "should join ID0 and ID1 instances into an ID1 instance", ->
@@ -103,6 +143,21 @@
     			(expect idB, "the right `[[false, true], [false, true]]` fork").to.equalIdentifier [false, [false, true]]
 
     	describe "its instances", ->
+    		it "should have an `encode` prototype method that calls the `encode` class method", ->
+    			(expect @Identifier.prototype).to.have.a.property 'encode'
+    				.that.is.a 'function'
+
+    			[encodeFn, encodeSpy] = [@Identifier.encode, (@Identifier.encode = sinon.spy -> "00")]
+    			id = new @Identifier false
+    			@Identifier.prototype.encode.call id, 'hex'
+    			(expect encodeSpy.calledOnce).to.equal true
+    			(expect encodeSpy.args[0][0]).to.equal id
+    			(expect encodeSpy.args[0][1]).to.equal 'hex'
+    			@Identifier.encode = encodeFn
+
+    			(expect @Identifier.prototype).to.have.an.ownProperty 'toBuffer'
+    			(expect @Identifier.prototype).to.have.an.ownProperty 'toString'
+
     		it "should have a `fork` prototype method that calls the `fork` class method", ->
     			(expect @Identifier.prototype).to.have.a.property 'fork'
     				.that.is.a 'function'
