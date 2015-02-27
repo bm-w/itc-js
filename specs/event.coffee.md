@@ -12,6 +12,11 @@
     chai.Assertion.addChainableMethod 'equalEvent', equalEvent
     chai.Assertion.addChainableMethod 'equalsEvent', equalEvent
 
+    equalBuffer = (bufB) ->
+    	(expect @_obj.toString 'binary').to.equal bufB.toString 'binary'
+    chai.Assertion.addChainableMethod 'equalBuffer', equalBuffer
+    chai.Assertion.addChainableMethod 'equalsBuffer', equalBuffer
+
 …
 
     describe "the `ITCEvent` class", ->
@@ -26,10 +31,16 @@
     		(expect ev).to.have.a.property 'tree', 0
     		(expect ev).to.equalEvent 0
 
-    	it "should have `decode`, `join`, and `event` class methods", ->
+    	it "should have `decode`, `encode`, `join`, and `event` class methods", ->
     		(expect @Event).to.have.a.property 'decode'
     			.that.is.a 'function'
     		(expect @Event).to.have.a.property 'parse'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'encode'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'toBuffer'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'toString'
     			.that.is.a 'function'
     		(expect @Event).to.have.a.property 'join'
     			.that.is.a 'function'
@@ -87,6 +98,58 @@
     			[ev, offset] = @Event.decode new Buffer [0x12, 0x00] # NB. 0001 001(0 0000 0000)
     			(expect ev).to.equalEvent [0, 0, 1]
     			(expect offset).to.equal 7
+
+    	describe "its `encode` class method", ->
+    		it "should encode an EVn instance into <1:1,env(n,2)>", ->
+    			[b, l] = @Event.encode new @Event 1
+    			(expect b).to.equalBuffer new Buffer [0x90] # NB. 1001 (0000)
+    			(expect l).to.equal 4
+
+    			[b, l] = @Event.encode new @Event 9
+    			(expect b).to.equalBuffer new Buffer [0xd4] # NB. 1101 01(00)
+    			(expect l).to.equal 6
+
+    			[b, l] = @Event.encode new @Event 17
+    			(expect b).to.equalBuffer new Buffer [0xe5] # NB. 1110 0101
+    			(expect l).to.equal 8
+
+    		it "should encode an EV[0, 0, eR] instance into <0:1,0:2,enc(eR)>", ->
+    			[b, l] = @Event.encode new @Event [0, 0, 1]
+    			(expect b).to.equalBuffer new Buffer [0x12] # NB. 0001 001(0)
+    			(expect l).to.equal 7
+
+    		it "should encode an EV[0, eL, 0] instance into <0:1,1:2,enc(eL)>", ->
+    			[b, l] = @Event.encode new @Event [0, 1, 0]
+    			(expect b).to.equalBuffer new Buffer [0x32] # NB. 0011 001(0)
+    			(expect l).to.equal 7
+
+    		it "should encode an EV[0, eL, eR] instance into <0:1,2:2,enc(eL),enc(eR)>", ->
+    			[b, l] = @Event.encode new @Event [0, 1, [0, 0, 1]]
+    			(expect b).to.equalBuffer new Buffer [0x52, 0x24] # NB. 0101 0010 0010 01(00)
+    			(expect l).to.equal 14
+
+    			[b, l] = @Event.encode new @Event [0, [0, 1, 0], 1]
+    			(expect b).to.equalBuffer new Buffer [0x46, 0x64] # NB. 0100 0110 0110 01(00)
+    			(expect l).to.equal 14
+
+    		it "should encode an EV[n, 0, eR] instance into <0:1,3:2,0:1,0:1,enc(n),enc(eR)>", ->
+    			[b, l] = @Event.encode new @Event [1, 0, 1]
+    			(expect b).to.equalBuffer new Buffer [0x64, 0xc8] # NB. 0110 0100 1100 1(000)
+    			(expect l).to.equal 13
+
+    		it "should encode an EV[n, eL, 0] instance into <0:1,3:2,0:1,1:1,enc(n),enc(eL)>", ->
+    			[b, l] = @Event.encode new @Event [1, 1, 0]
+    			(expect b).to.equalBuffer new Buffer [0x6c, 0xc8] # NB. 0110 1100 1100 1(000)
+    			(expect l).to.equal 13
+
+    		it "should encode an EV[n, eL, eR] instance into <0:1,3:2,1:1,enc(n),enc(eL),enc(eR)>", ->
+    			[b, l] = @Event.encode new @Event [1, 1, [0, 0, 1]]
+    			(expect b).to.equalBuffer new Buffer [0x7c, 0xc8, 0x90] # NB. 0,11,1, 1,100 1,100 1,000 1001 (0000)
+    			(expect l).to.equal 20
+
+    			[b, l] = @Event.encode new @Event [1, [0, 1, 0], 1]
+    			(expect b).to.equalBuffer new Buffer [0x7c, 0x99, 0x90] # NB. 0,11,1, 1,100 1,001 1001, 1001 (0000)
+    			(expect l).to.equal 20
 
     	describe "its `join` class method", ->
     		it "should join EV0 and EV1 instances into an EV1 instance", ->
@@ -162,6 +225,23 @@
     			(expect (@Event.event ev, id), "the ID[[1,0],[[0,1],0]]-EV[1,1,[0,[2,0,1],0]] event").to.equalEvent [1, [0, 0, [2, 2, 0]], 1]
 
     	describe "its instances", ->
+    		it "should have an `encode` prototype method that calls the `encode` class method", ->
+    			(expect @Event.prototype).to.have.a.property 'encode'
+    				.that.is.a 'function'
+
+    			[encodeFn, encodeSpy] = [@Event.encode, (@Event.encode = sinon.spy -> [(new Buffer [0x80]), 4])]
+    			ev = new @Event
+    			[b, l] = @Event.prototype.encode.call ev
+    			(expect encodeSpy.calledOnce).to.equal true
+    			(expect encodeSpy.args[0][0]).to.equal ev
+    			(expect b).to.equalBuffer new Buffer [0x80]
+    			(expect l).to.equal 4
+
+    			@Event.encode = encodeFn
+
+    			(expect @Event.prototype).to.have.an.ownProperty 'toBuffer'
+    			(expect @Event.prototype).to.have.an.ownProperty 'toString'
+
     		it "should have an `event` prototype method that calls the `event` class method", ->
     			(expect @Event.prototype).to.have.a.property 'event'
     				.that.is.a 'function'

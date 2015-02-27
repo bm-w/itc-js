@@ -65,6 +65,59 @@ function decodeITCEventTree(bits, offset) {
 	};
 };
 
+function encodeITCEventNumber(number, width) {
+	var base = Math.pow(2, width);
+	if (number < base) {
+		var bits = [false];
+		for (var i = 0; i < width; ++i) {
+			var bit = Math.pow(2, width - 1 - i);
+			bits.push(number & bit ? true : false);
+		};
+		return bits;
+	} else {
+		return [true].concat(encodeITCEventNumber.call(this, number - base, width + 1));
+	}
+};
+
+function encodeITCEventTree(tree) {
+	if (typeof tree == 'number') {
+		return [true].concat(encodeITCEventNumber.call(this, tree, 2));
+	} else if (tree[0] == 0) {
+		if (tree[1] == 0) {
+			var tree2Bits = encodeITCEventTree.call(this, tree[2]);
+
+			return [false, false, false].concat(tree2Bits);
+		} else if (tree[2] == 0) {
+			var tree1Bits = encodeITCEventTree.call(this, tree[1]);
+
+			return [false, false, true].concat(tree1Bits);
+		} else {
+			var tree1Bits = encodeITCEventTree.call(this, tree[1]),
+			    tree2Bits = encodeITCEventTree.call(this, tree[2]);
+
+			return [false, true, false].concat(tree1Bits).concat(tree2Bits);
+		};
+	} else if (tree[1] == 0) {
+		var tree0Bits = encodeITCEventTree.call(this, tree[0]),
+		    tree2Bits = encodeITCEventTree.call(this, tree[2]);
+
+		return [false, true, true, false, false].concat(tree0Bits).concat(tree2Bits);
+	} else if (tree[2] == 0) {
+		var tree0Bits = encodeITCEventTree.call(this, tree[0]),
+		    tree1Bits = encodeITCEventTree.call(this, tree[1]);
+
+		return [false, true, true, false, true].concat(tree0Bits).concat(tree1Bits);
+	} else {
+		var tree0Bits = encodeITCEventTree.call(this, tree[0]),
+		    tree1Bits = encodeITCEventTree.call(this, tree[1]),
+		    tree2Bits = encodeITCEventTree.call(this, tree[2]);
+
+		return [false, true, true, true, true].concat(tree0Bits).concat(tree1Bits).concat(tree2Bits);
+	};
+};
+
+
+
 function liftITCEventTree(tree, delta) {
 	if (typeof tree == 'number') { return tree + delta; }
 	else { return [tree[0] + delta, tree[1], tree[2]]; };
@@ -231,6 +284,25 @@ ITCEvent.parse = function parseITCEvent() {
 	return this.decode.apply(this, arguments)[0];
 };
 
+function setEncodeFn(util) {
+	this.encode = function encodeITCEvent(ev, enc) {
+		var tree = ev ? ev.tree : 0,
+		    bits = encodeITCEventTree.call(this, tree);
+		if (enc === Array) { return bits; };
+
+		var buffer = util.bitsToBuffer(bits);
+		return [enc != undefined ? buffer.toString(enc) : buffer, bits.length];
+	};
+};
+
+ITCEvent.toBuffer = function toITCEventBuffer(ev) {
+	return this.encode.call(this, ev)[0];
+};
+
+ITCEvent.toString = function toITCEventBuffer(ev, env) {
+	return this.encode.call(this, ev, env || 'base64')[0];
+};
+
 ITCEvent.join = function joinITCEvents(evA, evB) {
 	var treeA = evA ? evA.tree : 0,
 	    treeB = evB ? evB.tree : 0;
@@ -246,9 +318,24 @@ ITCEvent.prototype.event = function itcEventEvent(id) {
 	return this.constructor.event(this, id);
 };
 
+ITCEvent.prototype.encode = function itcEventEncode(enc) {
+	return this.constructor.encode(this, enc);
+};
+
+ITCEvent.prototype.toBuffer = function itcEventToBuffer() {
+	return this.constructor.toBuffer();
+};
+
+ITCEvent.prototype.toString = function itcEventToString(enc) {
+	return this.constructor.toString(enc);
+};
+
 
 if (typeof module == 'object') {
-	setDecodeFn.call(ITCEvent, require('./util'));
+	var util = require('./util');
+
+	setDecodeFn.call(ITCEvent, util);
+	setEncodeFn.call(ITCEvent, util);
 	module.exports = ITCEvent;
 } else {
 	throw new Error("Browser version not implemented.");

@@ -24,10 +24,29 @@ function node_bufferToBits(buffer) {
 	return bits;
 };
 
+// TODO: Browser
+function node_bitsToBuffer(bits) {
+	var bytes = [];
+	for (var i = 0, n = bits.length; i < n; i += 8) {
+		bytes.push(
+			(bits[i + 0] ? 0x80 : 0x0) |
+			(bits[i + 1] ? 0x40 : 0x0) |
+			(bits[i + 2] ? 0x20 : 0x0) |
+			(bits[i + 3] ? 0x10 : 0x0) |
+			(bits[i + 4] ? 0x08 : 0x0) |
+			(bits[i + 5] ? 0x04 : 0x0) |
+			(bits[i + 6] ? 0x02 : 0x0) |
+			(bits[i + 7] ? 0x01 : 0x0)
+		);
+	};
+	return new Buffer(bytes.length > 0 ? bytes : "");
+};
+
 
 if (typeof module == 'object') {
 	module.exports = {
 		bufferToBits: node_bufferToBits,
+		bitsToBuffer: node_bitsToBuffer,
 	};
 } else {
 	throw new Error("Browser version not implemented.");
