@@ -119,8 +119,10 @@ ITCIdentifier.parse = function parseITCIdentifier() {
 function setEncodeFn(util) {
 	this.encode = function toITCIdentifierBits(id, enc) {
 		var tree = id ? id.tree : false,
-		    bits = encodeITCIdentifierTreeBits.call(this, tree),
-		    buffer = util.bitsToBuffer(bits);
+		    bits = encodeITCIdentifierTreeBits.call(this, tree);
+		if (enc === Array) { return bits; };
+
+		var buffer = util.bitsToBuffer(bits);
 		return [enc != undefined ? buffer.toString(enc) : buffer, bits.length];
 	};
 };

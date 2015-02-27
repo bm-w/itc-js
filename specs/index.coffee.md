@@ -14,6 +14,11 @@
     chai.Assertion.addChainableMethod 'equalITC', equalITC
     chai.Assertion.addChainableMethod 'equalsITC', equalITC
 
+    equalBuffer = (bufB) ->
+    	(expect @_obj.toString 'binary').to.equal bufB.toString 'binary'
+    chai.Assertion.addChainableMethod 'equalBuffer', equalBuffer
+    chai.Assertion.addChainableMethod 'equalsBuffer', equalBuffer
+
 …
 
     describe "the `ITC` class", ->
@@ -37,10 +42,16 @@
     		(expect @ITC).to.have.a.property 'Event'
     			.that.is.a 'function'
 
-    	it "should have `decode`, `join`, `event`, and `fork` class methods", ->
+    	it "should have `decode`, `encode`, `join`, `event`, and `fork` class methods", ->
     		(expect @ITC).to.have.a.property 'decode'
     			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'parse'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'encode'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'toBuffer'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'toString'
     			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'join'
     			.that.is.a 'function'
@@ -65,6 +76,25 @@
 
     			@ITC.Identifier.decode = idDecodeFn
     			@ITC.Event.decode = evDecodeFn
+
+    	describe "its `encode` class method", ->
+    		it "should call the `encode` class methods of `Identifier` and `Event`", ->
+    			[idEncodeFn, idEncodeSpy] = [@ITC.Identifier.encode, @ITC.Identifier.encode = sinon.spy -> [false, false, false]]
+    			[evEncodeFn, evEncodeSpy] = [@ITC.Event.encode, @ITC.Event.encode = sinon.spy -> [true, false, false, false]]
+
+    			itc = new @ITC
+    			[b, l] = @ITC.encode itc
+    			(expect idEncodeSpy.calledOnce).to.equal true
+    			(expect idEncodeSpy.args[0][0]).to.equal itc._identifier
+    			(expect idEncodeSpy.args[0][1]).to.equal Array
+    			(expect evEncodeSpy.calledOnce).to.equal true
+    			(expect evEncodeSpy.args[0][0]).to.equal itc._event
+    			(expect evEncodeSpy.args[0][1]).to.equal Array
+    			(expect b).to.equalBuffer new Buffer [0x10]
+    			(expect l).to.equal 7
+
+    			@ITC.Identifier.encode = idEncodeFn
+    			@ITC.Event.encode = evEncodeFn
 
     	describe "its `join` class method", ->
     		it "should call the `join` class methods of `Identifier` and `Event`", ->
@@ -107,6 +137,24 @@
     			@ITC.Identifier.fork = idForkFn
 
     	describe "its instances", ->
+    		it "should have an `encode` prototype method that calls the `encode` class method", ->
+    			(expect @ITC.prototype).to.have.a.property 'encode'
+    				.that.is.a 'function'
+
+    			[encodeFn, encodeSpy] = [@ITC.encode, sinon.spy -> [(new Buffer [0x10]), 7]]
+    			@ITC.encode = encodeSpy
+    			itc = new @ITC
+    			[b, l] = @ITC.prototype.encode.call itc
+    			(expect encodeSpy.calledOnce).to.equal true
+    			(expect encodeSpy.args[0][0]).to.equal itc
+    			(expect b).to.equalBuffer new Buffer [0x10]
+    			(expect l).to.equal 7
+
+    			(expect @ITC.prototype).to.have.an.ownProperty 'toBuffer'
+    			(expect @ITC.prototype).to.have.an.ownProperty 'toString'
+
+    			@ITC.encode = encodeFn
+
     		it "should have an `event` prototype method that calls the `event` class method", ->
     			(expect @ITC.prototype).to.have.a.property 'event'
     				.that.is.a 'function'

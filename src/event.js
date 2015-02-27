@@ -287,8 +287,10 @@ ITCEvent.parse = function parseITCEvent() {
 function setEncodeFn(util) {
 	this.encode = function encodeITCEvent(ev, enc) {
 		var tree = ev ? ev.tree : 0,
-		    bits = encodeITCEventTree.call(this, tree),
-		    buffer = util.bitsToBuffer(bits);
+		    bits = encodeITCEventTree.call(this, tree);
+		if (enc === Array) { return bits; };
+
+		var buffer = util.bitsToBuffer(bits);
 		return [enc != undefined ? buffer.toString(enc) : buffer, bits.length];
 	};
 };
