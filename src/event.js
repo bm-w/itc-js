@@ -269,6 +269,50 @@ function eventITCEventTree(evTree, idTree) {
 	else { return growITCEventTree.call(this, evTree, idTree)[0]; };
 };
 
+function leqITCEventTrees(treeA, treeB) {
+	var treeAIsNumber = typeof treeA == 'number',
+	    treeBIsNumber = typeof treeB == 'number';
+
+	if (treeAIsNumber && treeBIsNumber) {
+		return treeA <= treeB;
+	} else if (treeAIsNumber) {
+		return treeA <= treeB[0];
+	} else if (treeBIsNumber) {
+		var treeA0 = treeA[0],
+		    treeA1 = liftITCEventTree.call(this, treeA[1], treeA0),
+		    treeA2 = liftITCEventTree.call(this, treeA[2], treeA0);
+
+		return treeA0 <= treeB
+		    && leqITCEventTrees.call(this, treeA1, treeB)
+		    && leqITCEventTrees.call(this, treeA2, treeB);
+	} else {
+		var treeA0 = treeA[0],
+		    treeA1 = liftITCEventTree.call(this, treeA[1], treeA0),
+		    treeA2 = liftITCEventTree.call(this, treeA[2], treeA0),
+		    treeB0 = treeB[0],
+		    treeB1 = liftITCEventTree.call(this, treeB[1], treeB0),
+		    treeB2 = liftITCEventTree.call(this, treeB[2], treeB0);
+
+		return treeA0 <= treeB0
+		    && leqITCEventTrees.call(this, treeA1, treeB1)
+		    && leqITCEventTrees.call(this, treeA2, treeB2);
+	};
+}
+
+function compareITCEventTrees(treeA, treeB) {
+	var treeALeqB = leqITCEventTrees.call(this, treeA, treeB),
+	    treeBLeqA = leqITCEventTrees.call(this, treeB, treeA);
+	
+	if (treeBLeqA && treeALeqB) {
+		return 0;
+	} else if (treeALeqB) {
+		return -1;
+	} else if (treeBLeqA) {
+		return 1;
+	} else {
+		return NaN;
+	};
+};
 
 function setDecodeFn(util) {
 	this.decode = function decodeITCEvent(arg0, arg1, arg2) {
@@ -313,6 +357,20 @@ ITCEvent.event = function eventITCEvent(ev, id) {
 	return new this(eventITCEventTree.call(this, ev ? ev.tree : 0, id ? id.tree : false));
 };
 
+ITCEvent.leq = function compareITCEvents(evA, evB) {
+	var treeA = evA ? evA.tree : 0,
+	    treeB = evB ? evB.tree : 0;
+	return leqITCEventTrees.call(this, treeA, treeB);
+};
+
+ITCEvent.compare = function compareITCEvents(evA, evB) {
+	var treeA = evA ? evA.tree : 0,
+	    treeB = evB ? evB.tree : 0;
+	return compareITCEventTrees.call(this, treeA, treeB);
+};
+
+ITCEvent.cmp = ITCEvent.compare;
+
 
 ITCEvent.prototype.event = function itcEventEvent(id) {
 	return this.constructor.event(this, id);
@@ -328,6 +386,10 @@ ITCEvent.prototype.toBuffer = function itcEventToBuffer() {
 
 ITCEvent.prototype.toString = function itcEventToString(enc) {
 	return this.constructor.toString(enc);
+};
+
+ITCEvent.prototype.leq = function itcEventLeq(ev) {
+	return this.constructor.leq(this, ev);
 };
 
 
