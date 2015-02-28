@@ -31,7 +31,7 @@
     		(expect ev).to.have.a.property 'tree', 0
     		(expect ev).to.equalEvent 0
 
-    	it "should have `decode`, `encode`, `join`, and `event` class methods", ->
+    	it "should have `decode`, `encode`, `join`, `event`, `leq`, and `compare` class methods", ->
     		(expect @Event).to.have.a.property 'decode'
     			.that.is.a 'function'
     		(expect @Event).to.have.a.property 'parse'
@@ -45,6 +45,12 @@
     		(expect @Event).to.have.a.property 'join'
     			.that.is.a 'function'
     		(expect @Event).to.have.a.property 'event'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'leq'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'compare'
+    			.that.is.a 'function'
+    		(expect @Event).to.have.a.property 'cmp'
     			.that.is.a 'function'
 
     	describe "its `decode` class method", ->
@@ -224,6 +230,53 @@
     			[ev, id] = [(new @Event [1, [0, 0, [2, 1, 0]], 1]), tree: [[false, [true, false]], [false, true]]]
     			(expect (@Event.event ev, id), "the ID[[1,0],[[0,1],0]]-EV[1,1,[0,[2,0,1],0]] event").to.equalEvent [1, [0, 0, [2, 2, 0]], 1]
 
+    	describe "its `leq` and `compare` class methods", ->
+    		it "should compare two EVn instances", ->
+    			(expect @Event.leq (new @Event 0), (new @Event 1)).to.equal true
+    			(expect @Event.leq (new @Event 1), (new @Event 0)).to.equal false
+
+    			(expect @Event.cmp (new @Event 0), (new @Event 0)).to.equal 0
+    			(expect @Event.cmp (new @Event 0), (new @Event 1)).to.be.below 0
+    			(expect @Event.cmp (new @Event 1), (new @Event 0)).to.be.above 0
+    			(expect @Event.cmp (new @Event 1), (new @Event 1)).to.equal 0
+
+    		it "should compare an EVn and an EV[n,eL,eR] instance", ->
+    			(expect @Event.leq (new @Event 0), (new @Event [0, 0, 1])).to.equal true
+    			(expect @Event.leq (new @Event 0), (new @Event [0, 1, 0])).to.equal true
+    			(expect @Event.leq (new @Event 1), (new @Event [0, 0, 1])).to.equal false
+    			(expect @Event.leq (new @Event 1), (new @Event [0, 1, 0])).to.equal false
+
+    			(expect @Event.cmp (new @Event 0), (new @Event [0, 0, 1])).to.be.below 0
+    			(expect @Event.cmp (new @Event 0), (new @Event [0, 1, 0])).to.be.below 0
+    			(expect @Event.cmp (new @Event 1), (new @Event [0, 0, 1])).to.be.above 0
+    			(expect @Event.cmp (new @Event 1), (new @Event [0, 1, 0])).to.be.above 0
+
+    		it "should compare an EV[n,eL,eR] and an EVn instance", ->
+    			(expect @Event.leq (new @Event [0, 0, 1]), (new @Event 1)).to.equal true
+    			(expect @Event.leq (new @Event [0, 1, 0]), (new @Event 1)).to.equal true
+    			(expect @Event.leq (new @Event [0, 0, 1]), (new @Event 0)).to.equal false
+    			(expect @Event.leq (new @Event [0, 1, 0]), (new @Event 0)).to.equal false
+
+    			(expect @Event.cmp (new @Event [0, 0, 1]), (new @Event 1)).to.be.below 0
+    			(expect @Event.cmp (new @Event [0, 1, 0]), (new @Event 1)).to.be.below 0
+    			(expect @Event.cmp (new @Event [0, 0, 1]), (new @Event 0)).to.be.above 0
+    			(expect @Event.cmp (new @Event [0, 1, 0]), (new @Event 0)).to.be.above 0
+
+    		it "should compare two EV[n,eL,eR] instances", ->
+    			(expect @Event.leq (new @Event [0, 0, 1]), (new @Event [1, 1, 0])).to.equal true
+    			(expect @Event.leq (new @Event [0, 1, 0]), (new @Event [1, 0, 1])).to.equal true
+    			(expect @Event.leq (new @Event [1, 0, 1]), (new @Event [0, 1, 0])).to.equal false
+    			(expect @Event.leq (new @Event [1, 1, 0]), (new @Event [0, 0, 1])).to.equal false
+    			(expect @Event.leq (new @Event [0, 0, 1]), (new @Event [0, 1, 0])).to.equal false
+    			(expect @Event.leq (new @Event [0, 1, 0]), (new @Event [0, 0, 1])).to.equal false
+
+    			(expect @Event.cmp (new @Event [0, 0, 1]), (new @Event [1, 1, 0])).to.be.below 0
+    			(expect @Event.cmp (new @Event [0, 1, 0]), (new @Event [1, 0, 1])).to.be.below 0
+    			(expect @Event.cmp (new @Event [1, 0, 1]), (new @Event [0, 1, 0])).to.be.above 0
+    			(expect @Event.cmp (new @Event [1, 1, 0]), (new @Event [0, 0, 1])).to.be.above 0
+    			(expect @Event.cmp (new @Event [0, 0, 1]), (new @Event [0, 1, 0])).to.satisfy isNaN
+    			(expect @Event.cmp (new @Event [0, 1, 0]), (new @Event [0, 0, 1])).to.satisfy isNaN
+
     	describe "its instances", ->
     		it "should have an `encode` prototype method that calls the `encode` class method", ->
     			(expect @Event.prototype).to.have.a.property 'encode'
@@ -254,3 +307,17 @@
     			(expect r).to.equalEvent 1
 
     			@Event.event = eventFn
+
+    		it "should have an `leq` prototype method that calls the `leq` class method", ->
+    			(expect @Event.prototype).to.have.a.property 'leq'
+    				.that.is.a 'function'
+
+    			[leqFn, leqSpy] = [@Event.leq, (@Event.leq = sinon.spy -> true)]
+    			ev = new @Event
+    			r = @Event.prototype.leq.call ev, ev
+    			(expect leqSpy.calledOnce).to.equal true
+    			(expect leqSpy.args[0][0]).to.equal ev
+    			(expect leqSpy.args[0][1]).to.equal ev
+    			(expect r).to.equal true
+
+    			@Event.leq = leqFn

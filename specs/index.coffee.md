@@ -42,7 +42,7 @@
     		(expect @ITC).to.have.a.property 'Event'
     			.that.is.a 'function'
 
-    	it "should have `decode`, `encode`, `join`, `event`, and `fork` class methods", ->
+    	it "should have `decode`, `encode`, `join`, `event`, `fork`, `leq`, and `cmp` class methods", ->
     		(expect @ITC).to.have.a.property 'decode'
     			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'parse'
@@ -58,6 +58,12 @@
     		(expect @ITC).to.have.a.property 'event'
     			.that.is.a 'function'
     		(expect @ITC).to.have.a.property 'fork'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'leq'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'compare'
+    			.that.is.a 'function'
+    		(expect @ITC).to.have.a.property 'cmp'
     			.that.is.a 'function'
 
     	describe "its `decode` class method", ->
@@ -127,7 +133,7 @@
 
     	describe "its `fork` class method", ->
     		it "should call the `fork` class method of `Identifier`", ->
-    			[idForkFn, idForkSpy] = [@ITC.Identifier.join, @ITC.Identifier.fork = sinon.spy => [(new @ITC.Identifier), (new @ITC.Identifier)]]
+    			[idForkFn, idForkSpy] = [@ITC.Identifier.fork, @ITC.Identifier.fork = sinon.spy => [(new @ITC.Identifier), (new @ITC.Identifier)]]
 
     			id = new @ITC.Identifier
     			@ITC.fork new @ITC id
@@ -135,6 +141,25 @@
     			(expect idForkSpy.args[0][0]).to.equal id
 
     			@ITC.Identifier.fork = idForkFn
+
+    	describe "its `leq` and `compare` class methods", ->
+    		it "should call the `leq` and `compare` class methods of `Event`", ->
+    			[idLeqFn, idLeqSpy] = [@ITC.Event.leq, @ITC.Event.leq = sinon.spy -> true]
+    			[idCmpFn, idCmpSpy] = [@ITC.Event.compare, @ITC.Event.compare = sinon.spy -> 0]
+
+    			[itcA, itcB] = [new @ITC, new @ITC]
+    			[rL, rC] = [(@ITC.leq itcA, itcB), (@ITC.cmp itcA, itcB)]
+    			(expect idLeqSpy.calledOnce).to.equal true
+    			(expect idLeqSpy.args[0][0]).to.equal itcA._event
+    			(expect idLeqSpy.args[0][1]).to.equal itcB._event
+    			(expect idCmpSpy.calledOnce).to.equal true
+    			(expect idCmpSpy.args[0][0]).to.equal itcA._event
+    			(expect idCmpSpy.args[0][1]).to.equal itcB._event
+    			(expect rL).to.equal true
+    			(expect rC).to.equal 0
+
+    			@ITC.Event.leq = idLeqFn
+    			@ITC.Event.cmp = idCmpFn
 
     	describe "its instances", ->
     		it "should have an `encode` prototype method that calls the `encode` class method", ->
@@ -180,6 +205,21 @@
     			(expect forkSpy.args[0][0]).to.equal itc
 
     			@ITC.fork = forkFn
+
+    		it "should have a `leq` prototype method that calls the `leq` class method", ->
+    			(expect @ITC.prototype).to.have.a.property 'leq'
+    				.that.is.a 'function'
+
+    			[leqFn, leqSpy] = [@ITC.leq, sinon.spy -> true]
+    			@ITC.leq = leqSpy
+    			[itcA, itcB] = [new @ITC, new @ITC]
+    			r = @ITC.prototype.leq.call itcA, itcB
+    			(expect leqSpy.calledOnce).to.equal true
+    			(expect leqSpy.args[0][0]).to.equal itcA
+    			(expect leqSpy.args[0][1]).to.equal itcB
+    			(expect r).to.equal true
+
+    			@ITC.leq = leqFn
 
     	it "should join, event, and fork arbitrary ITCs into arbitrary ITCs", ->
     		#NB. From Almeida et al, 2008, top of p6

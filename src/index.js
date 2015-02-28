@@ -77,6 +77,20 @@ ITC.fork = function forkITC(itc) {
 	return ids.map(function(id) { return new this(id, ev); }, this);
 };
 
+ITC.leq = function leqITC(itcA, itcB) {
+	itcA = itcA != null ? itcA : new this();
+	itcB = itcB != null ? itcB : new this();
+	return this.Event.leq(itcA._event, itcB._event);
+};
+
+ITC.compare = function compareITC(itcA, itcB) {
+	itcA = itcA != null ? itcA : new this();
+	itcB = itcB != null ? itcB : new this();
+	return this.Event.compare(itcA._event, itcB._event);
+};
+
+ITC.cmp = ITC.compare;
+
 
 ITC.prototype.event = function itcEvent() {
 	return this.constructor.event(this);
@@ -96,6 +110,10 @@ ITC.prototype.toBuffer = function itcToBuffer() {
 
 ITC.prototype.toString = function itcToString(enc) {
 	return this.constructor.toString(this, enc);
+};
+
+ITC.prototype.leq = function itcLeq(itc) {
+	return this.constructor.leq(this, itc);
 };
 
 
